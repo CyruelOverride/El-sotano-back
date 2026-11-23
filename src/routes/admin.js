@@ -152,6 +152,15 @@ router.delete('/imagenes/:id', async (req, res) => {
   res.status(204).end();
 });
 
+// ---- Subida de imagen: se guarda como data URL (el disco de Render es efímero) ----
+const DATA_URL = /^data:image\/(jpeg|png|webp|gif|avif);base64,[A-Za-z0-9+/=]+$/;
+router.post('/upload', (req, res) => {
+  const { dataUrl } = req.body ?? {};
+  if (typeof dataUrl !== 'string' || !DATA_URL.test(dataUrl)) throw badRequest('Imagen inválida (jpg, png, webp, gif o avif)');
+  if (dataUrl.length > 4.5 * 1024 * 1024) throw badRequest('La imagen supera los 3 MB');
+  res.status(201).json({ url: dataUrl });
+});
+
 // ---- Configuración clave/valor ------------------------------------------
 router.get('/configuracion', async (req, res) => {
   res.json(await prisma.configuracion.findMany({ orderBy: { clave: 'asc' } }));

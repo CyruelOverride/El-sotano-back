@@ -5,7 +5,7 @@ import { prisma } from '../db.js';
 export const SECTIONS = ['home', 'about', 'events', 'restaurant', 'upcoming', 'guests', 'gallery'];
 
 const img = (i) => (i ? i.url : null);
-const asImg = (i) => ({ src: i.url, alt: i.alt });
+const asImg = (i) => ({ id: String(i.id), src: i.url, alt: i.alt });
 const day = (d) => d.toISOString().slice(0, 10);
 const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -55,7 +55,7 @@ const builders = {
       who: { title: who?.titulo ?? '', text: who?.contenido ?? '' },
       history: arts
         .filter((a) => a.tipo === 'HISTORIA')
-        .map((a) => ({ year: a.extra?.anio ?? '', title: a.titulo, text: a.contenido })),
+        .map((a) => ({ id: String(a.id), year: a.extra?.anio ?? '', title: a.titulo, text: a.contenido })),
       identity: {
         text: identity?.contenido ?? '',
         pillars: arts.filter((a) => a.tipo === 'PILAR').map((a) => a.titulo),
@@ -134,7 +134,7 @@ const builders = {
   },
 
   async restaurant() {
-    const [arts, alimentos, gallery, space, info] = await Promise.all([
+    const [arts, alimentos, gallery, space, info, extraCats] = await Promise.all([
       articulos({ seccion: 'RESTO' }),
       prisma.alimento.findMany({
         where: { disponible: true },
@@ -144,12 +144,15 @@ const builders = {
       slotImages('resto.gallery'),
       slotImages('resto.space'),
       config('resto.info'),
+      config('resto.categorias'),
     ]);
     const intro = byClave(arts, 'resto.intro');
     const proposal = byClave(arts, 'resto.propuesta');
 
     // Categorías: unión de los varchar separados por coma, en orden de aparición.
     const cats = new Map();
+    // Categorías creadas por el admin que todavía no tienen platos.
+    for (const n of Array.isArray(extraCats) ? extraCats : []) cats.set(slug(n), n);
     const dishes = alimentos.map((a) => {
       const names = a.categorias.split(',').map((c) => c.trim()).filter(Boolean);
       if (!names.length) names.push(a.tipo === 'BEBIDA' ? 'Bebidas' : 'Comidas');

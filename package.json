@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file=.env src/server.js",
-    "start": "node --env-file=.env src/server.js",
-    "migrate": "prisma migrate dev",
+    "start": "node src/server.js",
+    "postinstall": "prisma generate",
+    "db:schema": "node --env-file=.env scripts/run.js 01_schema.sql",
+    "db:seed": "node --env-file=.env scripts/run.js 02_seed.sql",
+    "db:admin": "node --env-file=.env scripts/create-admin.js",
+    "db:reset": "node --env-file=.env scripts/run.js 99_reset.sql",
     "seed": "node --env-file=.env prisma/seed.js"
   },
   "dependencies": {
@@ -17,7 +21,8 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "prisma": "^6.0.0"
