@@ -10,7 +10,13 @@ import contentRoutes from './routes/content.js';
 export const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } })); // permite <img> desde el frontend
-app.use(cors({ origin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',') }));
+// CORS_ORIGIN: dominios separados por coma. Se tolera que falte el https:// o que sobre la barra final.
+const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean)
+  .map((o) => (/^https?:\/\//.test(o) ? o : `https://${o}`));
+app.use(cors({ origin: origins }));
 app.use(express.json({ limit: '6mb' }));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
