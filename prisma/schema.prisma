@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Seccion {
+  HOME
+  NOSOTROS
+  RESTO
+  EVENTOS
+  PROXIMAMENTE
+}
+
+enum TipoArticulo {
+  TEXTO
+  HISTORIA
+  PILAR
+  INVITADO
+}
+
+enum TipoAlimento {
+  COMIDA
+  BEBIDA
+}
+
+enum CategoriaEvento {
+  LIVE
+  ARCHIVE
+  FOOD
+}
+
+/// Solo para el login del admin. Se crea con el seed; no hay registro ni CRUD.
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+/// Texto editable de la página. Los invitados son Articulo con tipo INVITADO.
+model Articulo {
+  id        Int          @id @default(autoincrement())
+  clave     String       @unique // ej. "home.eslogan", "nosotros.quienes"
+  seccion   Seccion
+  tipo      TipoArticulo @default(TEXTO)
+  titulo    String       @default("")
+  subtitulo String? // invitado: categoría
+  contenido String       @default("") @db.Text
+  extra     Json? // historia: { anio: "Origen" }
+  orden     Int          @default(0)
+  activo    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  imagenes Imagen[]
+  eventos  Evento[] @relation("EventoInvitados")
+}
+
+/// Cualquier imagen editable. Puede colgar de un artículo, evento o alimento,
+/// o ser suelta e identificarse por `slot` (ej. "home.hero", "gallery").
+model Imagen {
+  id         Int      @id @default(autoincrement())
+  url        String
+  alt        String   @default("")
+  slot       String?
+  orden      Int      @default(0)
+  articuloId Int?
+  eventoId   Int?
+  alimentoId Int?
+  createdAt  DateTime @default(now())
+
+  articulo Articulo? @relation(fields: [articuloId], references: [id], onDelete: Cascade)
+  evento   Evento?   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  alimento Alimento? @relation(fields: [alimentoId], references: [id], onDelete: Cascade)
+
+  @@index([slot])
+}
+
+/// Sección restaurante: comida y bebida.
+model Alimento {
+  id          Int          @id @default(autoincrement())
+  nombre      String
+  descripcion String       @default("")
+  precio      Decimal?     @db.Decimal(10, 2)
+  tipo        TipoAlimento
+  categorias  String       @default("") // varchar separado por coma: "Para picar,Vegano"
+  disponible  Boolean      @default(true)
+  orden       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  imagenes Imagen[]
+}
+
+/// Eventos pasados y próximos. Próximo/pasado se calcula por `fecha`.
+model Evento {
+  id            Int             @id @default(autoincrement())
+  slug          String          @unique
+  nombre        String
+  fecha         DateTime
+  categoria     CategoriaEvento @default(LIVE)
+  tipo          String          @default("")
+  lugar         String          @default("")
+  descripcion   String          @default("") @db.Text
+  destacado     Boolean         @default(false)
+  participacion Boolean         @default(false) // participación en sede externa
+  entradas      String?
+  urlEntradas   String?
+  publicado     Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  imagenes  Imagen[]
+  invitados Articulo[] @relation("EventoInvitados")
+
+  @@index([fecha])
+}
+
+/// Datos del sitio que no son artículos: dirección, horarios, redes, reservas.
+model Configuracion {
+  clave     String   @id // "site", "resto.info"
+  valor     Json
+  updatedAt DateTime @updatedAt
+}
